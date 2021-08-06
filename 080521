@@ -1,0 +1,236 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jun 14 01:32:43 2020
+
+@author: binbinbee
+"""
+
+
+import random
+import pygame
+import numpy as np
+from scipy.spatial import distance_matrix
+
+BUZZ1 = 50
+BUZZ2 = 112
+height = 500
+width = 500
+depth = 500
+efficacy = 0.9
+bacteria = 10000
+compound = 10000
+
+class Particle(object):
+    def __init__(self, x, y, z, particle_type):
+        self.particle_type = particle_type
+        self.dx = 0
+        self.dy = 0
+        self.dz = 0
+        if self.particle_type == 1:
+            self.color = (128,128,128)
+            self.radius = 2.5
+            self.x = x
+            self.y = y
+            self.z = z
+            self.buzz = BUZZ1
+        elif self.particle_type == 2:
+            self.color = (128,64,64)
+            self.radius = 0.5
+            self.x = x
+            self.y = y
+            self.z = z
+            self.buzz = BUZZ2
+
+    def move(self):
+        self.dx = random.gauss(0,self.buzz)
+        self.dy = random.gauss(0,self.buzz)
+        self.dz = random.gauss(0,self.buzz)
+        if self.x == -10000:
+            self.dx = 0
+            self.dy = 0
+            self.dz = 0
+        else:
+            temp_x = self.x + self.dx
+            temp_y = self.y + self.dy
+            temp_z = self.z + self.dz
+            if temp_x >= width:
+                self.x = width - (temp_x - width)
+            elif temp_x <= 0:
+                self.x = 0 - (temp_x - 0)
+            else:
+                self.x += self.dx
+            if temp_y >= height:
+                self.y = height - (temp_y - height)
+            elif temp_y <= 0:
+                self.y = 0 - (temp_y - 0)
+            else:
+                self.y += self.dy
+            if temp_z >= depth:
+                self.z = depth - (temp_z - depth)
+            elif temp_z <= 0:
+                self.z = 0 - (temp_z - 0)
+            else:
+                self.z += self.dz
+
+
+class ParticleViewer(object):
+    def __init__(self, particles, germs, plot, size=(width,height,depth)):
+        (self.width, self.height, self.depth) = size
+        self.size = size
+        self.particles = particles
+        self.germs = germs
+        self.plot = plot
+        if self.plot:
+            self.screen = pygame.display.set_mode(size)
+
+    def redraw(self):
+        if self.plot:
+            screen = self.screen
+            screen.fill((0,0,0)) # black
+        for p in self.particles:
+            x = int(p.x)
+            y = int(p.y)
+            z = int(p.z)
+            if self.plot:
+                pygame.draw.circle(screen, p.color, (x, y, z), 0.5)
+                pygame.display.flip()
+        for p in self.germs:
+            x = int(p.x)
+            y = int(p.y)
+            z = int(p.z)
+            if self.plot:
+                pygame.draw.circle(screen, p.color, (x, y, z), 2.5)
+                pygame.display.flip()
+                
+    def close(self):
+        if self.plot:
+            pygame.quit()
+def tick(particles, germs, ParticleArray):
+#        print(particles, germs)
+        for g in germs:
+            g.move()
+#        for g in germs:
+#            for p in particles:
+#                if 3 < g.x < 497 and 3 < g.y < 497 and 3 < g.z < 497:
+#                    pass
+#                else:
+#                    if ((p.x-g.x)**2 + (p.y-g.y)**2 + (p.z-g.z)**2)**(1/2) < 3:
+#                        chance = random.uniform(0,1)
+#                        if chance < efficacy:
+#                            g.x = -10000
+#                            count += 1
+#                            break
+#        print(germs[0].x)
+        
+        arr_germs = []
+        for g in germs:
+            arr_germs.append([g.x, g.y, g.z])
+        GermsArray = np.array(arr_germs)
+#        print(GermsArray)
+#        print(distance_matrix(GermsArray, ParticleArray)[0])
+        if np.array(distance_matrix(GermsArray, ParticleArray) < 3).any() == True:
+            print(np.nonzero(distance_matrix(GermsArray, ParticleArray) < 3)[0])
+            ind = np.unique(np.nonzero(distance_matrix(GermsArray, ParticleArray) < 3)[0])
+            for i in ind[::-1]:
+                del germs[i]
+            print(len(germs))
+#            print(germs)
+        
+        if bacteria - len(germs) < 0.99 * bacteria:
+#            print(count)
+            return False
+        return True
+            
+def run_experiment(ti, plot = False):
+    random.seed(ti)
+    germs = []
+    for i in range(0,bacteria):
+        rx = random.uniform(0,width)
+        ry = random.uniform(0,height)
+        rz = random.uniform(0,depth)
+        rm = 1
+        new_germs = Particle(rx, ry, rz, rm)
+        germs.append(new_germs)
+#        arr_germs.append([new_germs.x, new_germs.y, new_germs.z])
+#    GermsArray = np.array(arr_germs)
+#    print(GermsArray)
+        
+    particles = []
+    arr_particles = []
+    for i in range(0,int(compound/6)):
+        rx = 0
+        ry = random.uniform(0,height)
+        rz = random.uniform(0,depth)
+        rm = 2
+        new_particles = Particle(rx, ry, rz, rm)
+        particles.append(new_particles)
+        arr_particles.append([new_particles.x, new_particles.y, new_particles.z])
+    for i in range(0,int(compound/6)):
+        rx = width
+        ry = random.uniform(0,height)
+        rz = random.uniform(0,depth)
+        rm = 2
+        new_particles = Particle(rx, ry, rz, rm)
+        particles.append(new_particles)
+        arr_particles.append([new_particles.x, new_particles.y, new_particles.z])
+    for i in range(0,int(compound/6)):
+        rx = random.uniform(0,width)
+        ry = 0
+        rz = random.uniform(0,depth)
+        rm = 2
+        new_particles = Particle(rx, ry, rz, rm)
+        particles.append(new_particles)
+        arr_particles.append([new_particles.x, new_particles.y, new_particles.z])
+    for i in range(0,int(compound/6)):
+        rx = random.uniform(0,width)
+        ry = height
+        rz = random.uniform(0,depth)
+        rm = 2
+        new_particles = Particle(rx, ry, rz, rm)
+        particles.append(new_particles)
+        arr_particles.append([new_particles.x, new_particles.y, new_particles.z])
+    for i in range(0,int(compound/6)):
+        rx = random.uniform(0,width)
+        ry = random.uniform(0,height)
+        rz = 0
+        rm = 2
+        new_particles = Particle(rx, ry, rz, rm)
+        particles.append(new_particles)
+        arr_particles.append([new_particles.x, new_particles.y, new_particles.z])
+    for i in range(0,int(compound/6)):
+        rx = random.uniform(0,width)
+        ry = random.uniform(0,height)
+        rz = depth
+        rm = 2
+        new_particles = Particle(rx, ry, rz, rm)
+        particles.append(new_particles)
+        arr_particles.append([new_particles.x, new_particles.y, new_particles.z])
+    ParticleArray = np.array(arr_particles)
+#    print(ParticleArray)
+    
+#    print(np.array(distance_matrix(GermsArray, ParticleArray) < 3).any())
+    
+    return particles, germs, ParticleArray
+
+if __name__ == "__main__":
+    with open("scenario1_1.txt", "w") as f:
+        for ti in range(1):
+            
+            t = 0
+#    win = ParticleViewer(particles, germs, plot)
+            is_end = False
+            particles, germs, ParticleArray = run_experiment(ti)
+            while is_end == False:
+                is_end = tick(particles, germs, ParticleArray)
+                
+        #        time.sleep(0.01)
+        #        if plot:
+        #            for event in pygame.event.get():
+        #                pass
+                t += 1
+        #        print(t)
+                if is_end:
+        #            win.close()
+                    print(t)
+                    #return the final time unit 
+                    f.write(str(t) + "\n")
